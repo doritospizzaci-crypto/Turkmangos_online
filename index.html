@@ -167,7 +167,7 @@ function makeNet(code,asHost){
 }
 
 /* ---------- menu / connection / lobby ---------- */
-let busy=false,cancelled=false;
+let busy=false,cancelled=false,testMode=false;
 const rcode=()=>Array.from({length:4},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.random()*24|0]).join('');
 const ERR={'peer-unavailable':'Oda bulunamadı. Kodu kontrol et.','full':'Oda dolu.','timeout':'Sunucuya ulaşılamadı. İnternetini kontrol et.','closed':'Bağlantı kurulamadı.','network':'Ağ hatası, tekrar dene.'};
 const setErr=t=>$('msg').textContent=t||'';
@@ -203,8 +203,8 @@ function lobbyUI(){
  l.forEach(p=>{const d=document.createElement('div');d.className='pc';const i=document.createElement('i');i.style.background=colOf(p);d.append(i,document.createTextNode(nm(p)+(p.isMe&&p.sameTab?' (sen)':'')+(p.peer===host()?' 👑':'')));box.append(d)});
  const used=l.filter(p=>!(p.isMe&&p.sameTab)).map(p=>p.presence.c),mp=l.find(p=>p.isMe&&p.sameTab),mc=mp&&mp.presence.c,sw=$('sws');sw.innerHTML='';
  COLORS.forEach((c,i)=>{const b=document.createElement('button');b.className='sw'+(used.includes(i)?' x':'')+(mc===i?' sel':'');b.style.background=c;b.onclick=()=>{if(!used.includes(i))R.presence({c:i})};sw.append(b)});
- const h=isHost();$('start').classList.toggle('hide',!h);$('start').disabled=l.length<3;
- $('lmsg').textContent=l.length<3?'En az 3 oyuncu gerekli ('+l.length+'/10)':(h?'Hazırsan başlat!':'Oda sahibi başlatmayı bekliyor...');
+ const h=isHost();$('start').classList.toggle('hide',!h);$('start').disabled=l.length<1;
+ $('lmsg').textContent=l.length<3?'Test modu ('+l.length+' oyuncu): normal oyun 3+ kişiyle':(h?'Hazırsan başlat!':'Oda sahibi başlatmayı bekliyor...');
 }
 $('bOn').onclick=()=>{setErr('');showMenu(1)};$('bBack').onclick=()=>{setErr('');showMenu(0)};
 $('bHow').onclick=()=>$('how').classList.toggle('hide');
@@ -219,9 +219,9 @@ $('inv').onclick=async()=>{
  try{await navigator.clipboard.writeText(url);toast('Davet linki kopyalandı!')}catch(e){prompt('Linki kopyala:',url)}
 };
 $('start').onclick=()=>{
- const l=sorted();if(l.length<3||!isHost())return;
+ const l=sorted();if(l.length<1||!isHost())return;
  const ids=l.map(p=>p.peer).sort(()=>Math.random()-.5);
- R.emit('start',{p:l.map(p=>p.peer),i:ids.slice(0,l.length>=8?2:1),s:Math.random()*1e9|0,g:1+(Math.random()*1e9|0)});
+ R.emit('start',{p:l.map(p=>p.peer),i:ids.slice(0,l.length<2?0:(l.length>=8?2:1)),s:Math.random()*1e9|0,g:1+(Math.random()*1e9|0)});
 };
 
 /* ---------- game events ---------- */
@@ -235,7 +235,7 @@ function onStart(m){
  if(m.peer!==host())return;
  const me=ME();if(!d.p.includes(me)){toast('Oyun başladı, sonrakini bekle');return}
  gid=d.g;role=d.i.includes(me)?'i':'c';alive=true;epoch=0;endSent=false;emUsed=false;myVote=null;hold=0;
- const crew=d.p.length-d.i.length;total=crew*3;done=new Set();
+ testMode=d.p.length<3;const crew=d.p.length-d.i.length;total=Math.max(1,crew*3);done=new Set();
  const rnd=mulberry((d.s^hash(me))>>>0),idx=[0,1,2,3,4,5].sort(()=>rnd()-.5);tasks=idx.slice(0,3);
  R.presence({g:gid,r:role,a:1,t:0,v:null,e:-1,bx:0,by:0});
  st='play';startedAt=Date.now();kcd=12;
@@ -243,7 +243,7 @@ function onStart(m){
  show('splash');$('split').textContent=role==='i'?'🔪 SEN ŞÜPHELİSİN':'🧑‍🚀 MÜRETTEBATSIN';
  $('split').style.color=role==='i'?'#ff4040':'#6ee7ff';
  const ims=d.i.map(id=>nm(byPeer(id)));
- $('ssub').textContent=role==='i'?'Gizlice öldür. '+(d.i.length>1?'Ortağın: '+ims.filter(n=>n!==nm(byPeer(me))).join(', '):'Tek başınasın.'):'Görevleri bitir, Şüpheli '+d.i.length+' kişi.';
+ $('ssub').textContent=role==='i'?'Gizlice öldür. '+(d.i.length>1?'Ortağın: '+ims.filter(n=>n!==nm(byPeer(me))).join(', '):'Tek başınasın.'):(d.i.length?'Görevleri bitir, Şüpheli '+d.i.length+' kişi.':'Test modu: Şüpheli yok, görevleri dene.');
  setTimeout(()=>{$('splash').classList.add('hide');['hud','btns'].forEach(x=>$(x).classList.remove('hide'));$('bKill').classList.toggle('hide',role!=='i')},3000);
 }
 function onKill(m){
@@ -324,7 +324,7 @@ function checkWin(){
  const g=G().filter(p=>p.presence.r);
  const ai=g.filter(p=>p.presence.r==='i'&&p.presence.a===1).length,ac=g.filter(p=>p.presence.r==='c'&&p.presence.a===1).length;
  const td=g.filter(p=>p.presence.r==='c').reduce((s,p)=>s+(p.presence.t|0),0);
- let w=null;if(ai===0)w='c';else if(ai>=ac)w='i';else if(td>=total)w='c';
+ let w=null;if(testMode){if(td>=total)w='c'}else if(ai===0)w='c';else if(ai>=ac)w='i';else if(td>=total)w='c';
  if(w){endSent=true;R.emit('end',{w})}
 }
 function onEnd(m){
