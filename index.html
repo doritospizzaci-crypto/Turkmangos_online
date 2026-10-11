@@ -346,6 +346,12 @@ function fixColor(){
  const c0=m.presence.c,dupe=ps.some(p=>p.peer<m.peer&&p.presence.c===c0);
  if(!(c0>=0)||dupe){const oc=ps.filter(p=>p.peer!==m.peer).map(p=>p.presence.c);let c=0;while(oc.includes(c))c++;R.presence({c:c%10})}
 }
+$('bOn').onclick=()=>{setErr('');showMenu(1)};$('bBack').onclick=()=>{setErr('');showMenu(0)};
+$('bHow').onclick=()=>$('how').classList.toggle('hide');
+$('bq').onclick=()=>enter('quick');$('mk').onclick=()=>enter('host');
+$('jn').onclick=()=>{const c=$('cd').value.trim().toUpperCase();if(c.length<3){setErr('Oda kodunu gir');return}enter('join',c)};
+$('cd').onkeydown=e=>{if(e.key==='Enter')$('jn').click()};
+$('ccancel').onclick=()=>{cancelled=true;location.reload()};
 /* ---------- AYARLAR ---------- */
 const DEF={imp:0,spd:1,vis:1,kcd:18,tpp:6,em:1,vt:50,roles:1};
 const CFGD=[['imp','Şüpheli sayısı',[[0,'Otomatik'],[1,'1'],[2,'2'],[3,'3']]],['spd','Oyuncu hızı',[[.75,'Yavaş'],[1,'Normal'],[1.25,'Hızlı']]],['vis','Görüş mesafesi',[[.7,'Dar'],[1,'Normal'],[1.35,'Geniş']]],['kcd','Öldürme bekleme',[[10,'10 sn'],[18,'18 sn'],[25,'25 sn'],[35,'35 sn']]],['tpp','Görev sayısı',[[3,'3'],[6,'6'],[9,'9']]],['em','Acil toplantı hakkı',[[0,'0'],[1,'1'],[2,'2'],[3,'3']]],['vt','Oylama süresi',[[30,'30 sn'],[50,'50 sn'],[80,'80 sn']]],['roles','Özel roller (4+ kişi)',[[1,'Açık'],[0,'Kapalı']]]];
